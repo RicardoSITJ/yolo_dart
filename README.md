@@ -2,7 +2,11 @@
 
 YOLO object detection running on the **NPU** of the [Variscite **DART-MX8M-PLUS**](https://www.variscite.com/product/system-on-module-som/cortex-a53-krait/dart-mx8m-plus-nxp-i-mx-8m-plus/), based on the **NXP i.MX 8M Plus**.
 
-The i.MX 8M Plus integrates a **Verisilicon VIP8000 NPU (~2.3 TOPS)**. This repo runs a quantized (INT8) YOLO model on that NPU using **TensorFlow Lite** with NXP's **VX external delegate** (`libvx_delegate.so`), part of the eIQ / NXP BSP.
+The i.MX 8M Plus integrates a **Verisilicon VIP8000 NPU (~2.3 TOPS)**. This repo runs a quantized (INT8) YOLO model on that NPU using **TensorFlow Lite** with NXP's **VX external delegate** (`libvx_delegate.so`), captures from a USB webcam and draws live detections on the board's LVDS display via OpenCV.
+
+> ✅ **Working on hardware (2026-11-19):** EdgeFirst YOLOv5n INT8 runs on the NPU at
+> **~59 ms/frame**; validated on `cat.jpg` (`cat 0.70`) and live against a Logitech
+> C920. See [`docs/models.md`](docs/models.md) and [`docs/hardware.md`](docs/hardware.md).
 
 ---
 
@@ -23,22 +27,28 @@ On **first run**, the VX delegate compiles the graph into an NPU warmup cache (`
 | SoM             | Variscite DART-MX8M-PLUS                                 |
 | SoC             | NXP i.MX 8M Plus (4× Cortex-A53)                         |
 | NPU             | Verisilicon VIP8000, ~2.3 TOPS, INT8                     |
-| OS              | Yocto BSP (Variscite) / Linux                            |
-| Runtime         | TensorFlow Lite + `libvx_delegate.so` (eIQ)             |
+| OS              | Debian 12 (bookworm), kernel 6.6.119-fslc-imx, aarch64   |
+| Camera          | Logitech C920 (UVC) on `/dev/video3`                     |
+| Display         | LVDS panel + Weston/Wayland                              |
+| Runtime         | TFLite `tflite_runtime` 2.16.2 + `libvx_delegate.so`, OpenCV 4.6 (Qt5) — all from BSP |
 
 ## Repo layout
 
 ```
 yolo_dart/
-├── models/           # .tflite models (INT8). Large files tracked out of git (see .gitignore)
+├── models/
+│   └── coco_labels.txt        # 80 COCO classes (the .tflite is downloaded by setup)
 ├── src/
-│   ├── detect.py     # run inference on an image/stream using the NPU
-│   └── benchmark.py  # measure NPU vs CPU latency
+│   ├── realtime_detect.py     # live camera -> NPU -> boxes on the LVDS display
+│   ├── detect.py              # single-image NPU sanity check
+│   └── yolo_decode.py         # DFL decode (raw head) + NMS, shared by both
 ├── scripts/
-│   └── export_tflite.sh   # export + quantize a YOLO model to INT8 TFLite
-├── requirements.txt  # host (export) and target (runtime) deps
+│   ├── setup_board.sh         # on-board env check + model download
+│   └── export_tflite.sh       # (host) export a custom YOLO to INT8 TFLite
 └── docs/
-    └── npu_setup.md  # BSP / delegate setup notes on the DART
+    ├── hardware.md            # verified board + host inventory
+    ├── models.md              # model choice, license, output decode
+    └── npu_setup.md           # BSP / delegate setup notes
 ```
 
 ## Quick start (on the DART)
@@ -56,10 +66,13 @@ cd yolo_dart
 ./scripts/setup_board.sh
 
 # 3. Real-time detection on the NPU, shown on the LVDS/Weston display.
-#    XDG_RUNTIME_DIR lets the GUI window reach Weston when launched over serial/ssh.
+#    The three env vars make the OpenCV (Qt5) window appear on Weston when the
+#    script is launched from a serial/ssh session (no graphical login of its own).
 export XDG_RUNTIME_DIR=/run/user/0
+export WAYLAND_DISPLAY=wayland-1
+export QT_QPA_PLATFORM=wayland
 python3 src/realtime_detect.py \
-    --model models/yolov8n_int8.tflite \
+    --model models/yolov5n-det-int8.tflite \
     --labels models/coco_labels.txt \
     --camera 3 \
     --delegate /usr/lib/libvx_delegate.so
@@ -68,7 +81,16 @@ python3 src/realtime_detect.py \
 # Headless (no display, writes outputs/latest.jpg): add --headless
 ```
 
-Single-image sanity check instead of live video: `src/detect.py` (same NPU path).
+Single-image sanity check instead of live video:
+
+```bash
+python3 src/detect.py --source cat.jpg \
+    --model models/yolov5n-det-int8.tflite --delegate /usr/lib/libvx_delegate.so
+```
+
+**First run compiles the NPU graph (~30–60 s warmup)** before the first result; it is
+fast afterwards. The model is fetched automatically by `setup_board.sh` — see
+[`docs/models.md`](docs/models.md) for the model, its license, and the output decode.
 
 ## Exporting a model (on a host PC)
 
@@ -78,11 +100,16 @@ Single-image sanity check instead of live video: `src/detect.py` (same NPU path)
 
 ## Status
 
-🚧 Early scaffold. Next steps:
-- [ ] Add a working INT8 TFLite export for YOLOv8n
-- [ ] Validate NPU delegation (confirm ops run on VIP8000, not CPU)
-- [ ] Camera / GStreamer pipeline for live detection
-- [ ] Benchmark NPU vs CPU
+Working on hardware:
+- [x] Pretrained INT8 YOLO running on the VIP8000 NPU via `vx_delegate` (~59 ms/frame)
+- [x] DFL decode for the EdgeFirst raw-head model + NMS
+- [x] Single-image validation (`cat.jpg` → `cat 0.70`)
+- [x] Live C920 capture → NPU → annotated frames
+- [x] On-display output via OpenCV/Qt5 on the LVDS/Weston panel
+
+Next:
+- [ ] Benchmark NPU vs CPU and measure sustained live FPS
+- [ ] Tune confidence/NMS and camera resolution for best latency
 
 ## License
 
