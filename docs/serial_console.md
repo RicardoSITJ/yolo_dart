@@ -4,6 +4,24 @@ How to operate the DART-MX8M-PLUS from a host (Mac/Linux) with **no monitor or
 keyboard on the board** — the method this whole project was built with. Useful for
 scripts and for AI agents like **Claude Code** that need a shell on the board.
 
+## Quick start (30 seconds, macOS)
+
+```bash
+# 1. Find the serial port (FTDI shows up as cu.usbserial-*)
+ls /dev/cu.*
+
+# 2. Open the console at 115200 baud (replace X's with your serial)
+screen /dev/cu.usbserial-XXXXXXXX 115200
+#    exit screen: Ctrl-A then K, confirm y
+
+# 3. If the screen is blank, power-cycle the board (turn it off and on)
+#    to catch the U-Boot/Linux boot banner, then press Enter.
+#    At `imx8mp-var-dart login:` type: root   (no password)
+```
+
+If `screen` shows garbage instead of text, the baud is wrong — it must be **115200**.
+For script/agent use (no interactive screen), skip to *Option B* below.
+
 ## The link
 
 The board's debug UART reaches the host through an **FTDI FT230X USB-serial** bridge:
