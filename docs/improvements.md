@@ -30,14 +30,12 @@ Open questions before adding it: should it start only after the LVDS/Weston sess
 is up (ordering/race), and do we want it enabled by default or opt-in via a flag in
 `setup_board.sh`?
 
-## 2. Doc nit: `cat.jpg` sample image (pending)
+## 2. Sample image — RESOLVED ✅
 
-`docs/models.md` / the README sanity check reference `cat.jpg`, which lives in the
-board's `/root` (a leftover from earlier experiments) and is **not** in the repo. A
-fresh clone has no `cat.jpg`. Options:
-- commit a small sample image under `assets/` and point the examples at it, or
-- change the examples to `--source <your_image.jpg>` and make `detect.py` print a
-  clear message when the source is missing.
+Earlier the examples referenced `cat.jpg`, which only existed on the board's `/root`
+and was absent from a fresh clone. Fixed: `setup_board.sh` now downloads a sample to
+`assets/sample.jpg` (gitignored, same pattern as the model) and `src/detect.py`
+defaults `--source` to it. The sanity check works on a clean clone.
 
 ## 3. Nice-to-haves (not started)
 

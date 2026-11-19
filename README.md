@@ -72,7 +72,7 @@ cd yolo_dart
 #    socket), so this works straight from a serial/ssh session.
 python3 src/realtime_detect.py --delegate /usr/lib/libvx_delegate.so
 
-# CPU vs NPU A/B: drop --delegate to run the same model on the A53 cores.
+# CPU vs NPU A/B: pass --delegate '' to run the same model on the A53 cores.
 # Headless (no display, writes outputs/latest.jpg): add --headless
 ```
 
@@ -83,8 +83,7 @@ XWayland.
 Single-image sanity check instead of live video:
 
 ```bash
-python3 src/detect.py --source cat.jpg \
-    --model models/yolov5n-det-int8.tflite --delegate /usr/lib/libvx_delegate.so
+python3 src/detect.py --source assets/sample.jpg --delegate /usr/lib/libvx_delegate.so
 ```
 
 **First run compiles the NPU graph (~30–60 s warmup)** before the first result. The

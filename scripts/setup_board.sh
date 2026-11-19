@@ -64,8 +64,20 @@ else
   fi
 fi
 
+echo "  sample image..."
+SAMPLE=assets/sample.jpg
+mkdir -p assets
+if [ -f "$SAMPLE" ]; then
+  ok "$SAMPLE"
+else
+  if wget -q -O "$SAMPLE" "https://ultralytics.com/images/bus.jpg"; then
+    ok "downloaded $SAMPLE"
+  else
+    rm -f "$SAMPLE"; warn "sample image download failed (optional)"
+  fi
+fi
+
 echo
 echo "Setup check complete. To run (shows window on the LVDS/Weston display):"
-echo "  export XDG_RUNTIME_DIR=/run/user/0"
 echo "  python3 src/realtime_detect.py --delegate /usr/lib/libvx_delegate.so"
-echo "Static sanity check instead:  python3 src/detect.py --source cat.jpg"
+echo "Static sanity check instead:  python3 src/detect.py --source assets/sample.jpg"

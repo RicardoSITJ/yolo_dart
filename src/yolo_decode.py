@@ -60,17 +60,22 @@ def _dequant(arr, detail):
 def decode_raw_dfl(interp, outs, conf_thres, iou_thres, input_wh,
                    nc=80, reg_max=16):
     iw, ih = input_wh
-    # group tensors by grid size -> {grid: {channels: dequant array [H,W,C]}}
+    # group tensors by grid size, classifying each as the box (4*reg_max ch) or
+    # the class tensor by its channel count (not as a dict key, so it is robust
+    # even if nc happened to equal 4*reg_max).
     by_grid = {}
     for od in outs:
         a = _dequant(interp.get_tensor(od["index"]), od)[0]   # [H,W,C]
         H, W, C = a.shape
-        by_grid.setdefault((H, W), {})[C] = a
+        slot = by_grid.setdefault((H, W), {"box": None, "cls": None})
+        slot["box" if C == 4 * reg_max else "cls"] = a
 
     all_boxes, all_scores, all_cids = [], [], []
     for (H, W), d in by_grid.items():
-        box = d[4 * reg_max].reshape(H * W, 4, reg_max)       # [N,4,16]
-        cls = d[nc].reshape(H * W, nc)                         # [N,80]
+        if d["box"] is None or d["cls"] is None:
+            continue
+        box = d["box"].reshape(H * W, 4, reg_max)             # [N,4,16]
+        cls = d["cls"].reshape(H * W, -1)                     # [N,nc]
         stride = iw // W
 
         dist = (_softmax(box, axis=2) * np.arange(reg_max)).sum(axis=2)  # [N,4] ltrb

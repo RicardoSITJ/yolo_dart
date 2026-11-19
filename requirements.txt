@@ -1,8 +1,10 @@
 # --- Target (DART-MX8M-PLUS) runtime ---
-# tflite-runtime ships in the NXP/Variscite BSP; listed here for reference.
-# tflite-runtime
+# On the board, tflite-runtime AND OpenCV 4.6 (Qt5 GUI) come from the Variscite
+# BSP — do NOT pip install them there (it would shadow the NPU/GUI builds).
+# These lines are only for running the code OFF-board on a dev host:
 numpy
-opencv-python-headless
+# opencv-python   # full build with GUI (imshow); NOT the -headless variant
+# tflite-runtime
 
 # --- Host (export / quantization) only ---
 # Install these on a dev PC, NOT on the board:

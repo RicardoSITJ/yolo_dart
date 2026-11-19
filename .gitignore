@@ -17,9 +17,10 @@ venv/
 *.nb.cache
 /tmp/*.nb
 
-# Data & outputs
+# Data & outputs (sample image is fetched by setup_board.sh, not committed)
 data/
 outputs/
+assets/
 *.jpg
 *.jpeg
 *.png

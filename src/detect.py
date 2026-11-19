@@ -31,7 +31,8 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", default="models/yolov5n-det-int8.tflite")
     ap.add_argument("--labels", default="models/coco_labels.txt")
-    ap.add_argument("--source", required=True, help="image file")
+    ap.add_argument("--source", default="assets/sample.jpg",
+                    help="image file (downloaded by setup_board.sh)")
     ap.add_argument("--delegate", default="/usr/lib/libvx_delegate.so",
                     help="pass '' to force CPU")
     ap.add_argument("--conf", type=float, default=0.35)
