@@ -59,13 +59,17 @@ Everything the runtime needs — OpenCV 4.6 (Qt5 GUI), `tflite_runtime` 2.16.2 a
 `libvx_delegate.so` — already ships in the Variscite BSP, so there is nothing to
 `pip install`. See [`docs/hardware.md`](docs/hardware.md) for the verified board state.
 
-**Two commands from a clean clone — `make streaming` downloads the model and starts
-live detection on the display:**
+**From a clean clone — verify the board, then start streaming** (full step-by-step
+with expected output and troubleshooting in [`RUNBOOK.md`](RUNBOOK.md)):
 
 ```bash
-git clone https://github.com/RicardoSITJ/yolo_dart.git && cd yolo_dart
-make streaming
+git clone https://github.com/RicardoSITJ/yolo_dart.git
+cd yolo_dart
+make setup        # check NPU + camera, download the model
+make streaming    # live detection on the LVDS display
 ```
+
+(`make streaming` alone also works — it downloads the model on demand.)
 
 Other targets: `make detect` (single image), `make benchmark`, `make cpu` (NPU vs
 CPU), `make setup` (verify env), `make test`. Override knobs inline, e.g.
