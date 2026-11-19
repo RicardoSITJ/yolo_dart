@@ -18,6 +18,7 @@ import cv2
 import numpy as np
 
 import yolo_decode as yd
+import npu
 
 try:
     from tflite_runtime.interpreter import Interpreter, load_delegate
@@ -36,12 +37,17 @@ def main():
     ap.add_argument("--conf", type=float, default=0.35)
     ap.add_argument("--iou", type=float, default=0.45)
     ap.add_argument("--out", default="outputs/detection.jpg")
+    ap.add_argument("--cache-dir", default="~/.cache/yolo_dart/npu",
+                    help="persistent NPU graph cache (faster re-launch)")
+    ap.add_argument("--no-cache", action="store_true", help="disable the NPU graph cache")
     args = ap.parse_args()
 
     labels = [l.strip() for l in open(args.labels)] if os.path.exists(args.labels) else []
 
     delegates = []
     if args.delegate:
+        if not args.no_cache:
+            npu.enable_npu_cache(args.cache_dir)   # must run before load_delegate
         print(f"[npu] loading VX delegate: {args.delegate}")
         delegates = [load_delegate(args.delegate)]
     interp = Interpreter(model_path=args.model, experimental_delegates=delegates)

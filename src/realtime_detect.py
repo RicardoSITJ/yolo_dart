@@ -25,6 +25,7 @@ import cv2
 import numpy as np
 
 import yolo_decode as yd
+import npu
 
 
 def autodetect_display():
@@ -48,11 +49,12 @@ except ImportError:
     from tensorflow.lite.python.interpreter import Interpreter, load_delegate
 
 
-def build_interpreter(model_path, delegate_path):
+def build_interpreter(model_path, delegate_path, cache_dir=None):
     delegates = []
     if delegate_path:
         if not os.path.exists(delegate_path):
             raise FileNotFoundError(f"delegate not found: {delegate_path}")
+        npu.enable_npu_cache(cache_dir)            # must run before load_delegate
         print(f"[npu] loading VX delegate: {delegate_path}")
         delegates = [load_delegate(delegate_path)]
     interp = Interpreter(model_path=model_path, experimental_delegates=delegates)
@@ -85,13 +87,17 @@ def main():
     ap.add_argument("--cap-h", type=int, default=720)
     ap.add_argument("--headless", action="store_true",
                     help="no window; write annotated frames to outputs/latest.jpg")
+    ap.add_argument("--cache-dir", default="~/.cache/yolo_dart/npu",
+                    help="persistent NPU graph cache (faster re-launch)")
+    ap.add_argument("--no-cache", action="store_true", help="disable the NPU graph cache")
     args = ap.parse_args()
 
     if not args.headless:
         autodetect_display()
 
     labels = [l.strip() for l in open(args.labels)] if os.path.exists(args.labels) else []
-    interp = build_interpreter(args.model, args.delegate or None)
+    interp = build_interpreter(args.model, args.delegate or None,
+                               cache_dir=None if args.no_cache else args.cache_dir)
     inp = interp.get_input_details()[0]
     outs = interp.get_output_details()
     _, ih, iw, _ = inp["shape"]

@@ -41,7 +41,9 @@ yolo_dart/
 ├── src/
 │   ├── realtime_detect.py     # live camera -> NPU -> boxes on the LVDS display
 │   ├── detect.py              # single-image NPU sanity check
-│   └── yolo_decode.py         # DFL decode (raw head) + NMS, shared by both
+│   ├── benchmark.py           # NPU/CPU latency + end-to-end FPS
+│   ├── yolo_decode.py         # DFL decode (raw head) + NMS, shared by all
+│   └── npu.py                 # VX-delegate graph cache helper
 ├── scripts/
 │   ├── setup_board.sh         # on-board env check + model download
 │   └── export_tflite.sh       # (host) export a custom YOLO to INT8 TFLite
@@ -85,9 +87,22 @@ python3 src/detect.py --source cat.jpg \
     --model models/yolov5n-det-int8.tflite --delegate /usr/lib/libvx_delegate.so
 ```
 
-**First run compiles the NPU graph (~30–60 s warmup)** before the first result; it is
-fast afterwards. The model is fetched automatically by `setup_board.sh` — see
-[`docs/models.md`](docs/models.md) for the model, its license, and the output decode.
+**First run compiles the NPU graph (~30–60 s warmup)** before the first result. The
+compiled graph is cached under `~/.cache/yolo_dart/npu` (VX delegate graph cache), so
+**every later launch starts fast**; pass `--no-cache` to disable. The model is fetched
+automatically by `setup_board.sh` — see [`docs/models.md`](docs/models.md) for the
+model, its license, and the output decode.
+
+## Benchmark
+
+```bash
+python3 src/benchmark.py            # NPU steady-state latency + FPS (reproducible)
+python3 src/benchmark.py --cpu      # NPU vs CPU A/B
+python3 src/benchmark.py --camera 3 # end-to-end live pipeline FPS
+```
+
+See [`docs/improvements.md`](docs/improvements.md) for pending/optional enhancements
+(systemd auto-start, sample image, GStreamer sink).
 
 ## Exporting a model (on a host PC)
 
