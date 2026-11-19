@@ -66,20 +66,17 @@ cd yolo_dart
 ./scripts/setup_board.sh
 
 # 3. Real-time detection on the NPU, shown on the LVDS/Weston display.
-#    The three env vars make the OpenCV (Qt5) window appear on Weston when the
-#    script is launched from a serial/ssh session (no graphical login of its own).
-export XDG_RUNTIME_DIR=/run/user/0
-export WAYLAND_DISPLAY=wayland-1
-export QT_QPA_PLATFORM=wayland
-python3 src/realtime_detect.py \
-    --model models/yolov5n-det-int8.tflite \
-    --labels models/coco_labels.txt \
-    --camera 3 \
-    --delegate /usr/lib/libvx_delegate.so
+#    The window is routed to Weston automatically (the script finds the Wayland
+#    socket), so this works straight from a serial/ssh session.
+python3 src/realtime_detect.py --delegate /usr/lib/libvx_delegate.so
 
 # CPU vs NPU A/B: drop --delegate to run the same model on the A53 cores.
 # Headless (no display, writes outputs/latest.jpg): add --headless
 ```
+
+Defaults: `--model models/yolov5n-det-int8.tflite`, `--labels models/coco_labels.txt`,
+`--camera 3`. If the window does not appear, set `QT_QPA_PLATFORM=xcb` to fall back to
+XWayland.
 
 Single-image sanity check instead of live video:
 

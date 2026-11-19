@@ -17,6 +17,7 @@ Example (on the board):
         --camera 3 --delegate /usr/lib/libvx_delegate.so
 """
 import argparse
+import glob
 import os
 import time
 
@@ -24,6 +25,22 @@ import cv2
 import numpy as np
 
 import yolo_decode as yd
+
+
+def autodetect_display():
+    """Make the OpenCV/Qt window reach Weston when launched from serial/ssh.
+    Sets XDG_RUNTIME_DIR, WAYLAND_DISPLAY and QT_QPA_PLATFORM if not already set,
+    so no manual `export` is needed before running."""
+    os.environ.setdefault("XDG_RUNTIME_DIR", "/run/user/0")
+    if os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"):
+        return
+    xdg = os.environ["XDG_RUNTIME_DIR"]
+    socks = [s for s in glob.glob(os.path.join(xdg, "wayland-*"))
+             if not s.endswith(".lock")]
+    if socks:
+        os.environ["WAYLAND_DISPLAY"] = os.path.basename(sorted(socks)[0])
+        os.environ.setdefault("QT_QPA_PLATFORM", "wayland")
+        print(f"[display] using Wayland socket {os.environ['WAYLAND_DISPLAY']}")
 
 try:
     from tflite_runtime.interpreter import Interpreter, load_delegate
@@ -70,7 +87,8 @@ def main():
                     help="no window; write annotated frames to outputs/latest.jpg")
     args = ap.parse_args()
 
-    os.environ.setdefault("XDG_RUNTIME_DIR", "/run/user/0")
+    if not args.headless:
+        autodetect_display()
 
     labels = [l.strip() for l in open(args.labels)] if os.path.exists(args.labels) else []
     interp = build_interpreter(args.model, args.delegate or None)
