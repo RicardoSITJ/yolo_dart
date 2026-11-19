@@ -50,7 +50,9 @@ yolo_dart/
 └── docs/
     ├── hardware.md            # verified board + host inventory
     ├── models.md              # model choice, license, output decode
-    └── npu_setup.md           # BSP / delegate setup notes
+    ├── npu_setup.md           # BSP / delegate setup notes
+    ├── serial_console.md      # driving the board over USB-serial
+    └── session_log_serial_bringup.md  # transcript: serial bring-up + streaming
 ```
 
 ## Quick start (on the DART)
@@ -153,6 +155,10 @@ ls /dev/video*
 python3 ~/yolo_dart/src/detect.py
 EOF
 ```
+
+For a worked end-to-end example (connect → clone → `make setup` → `make streaming`
+→ stop), see the session transcript in
+[`docs/session_log_serial_bringup.md`](docs/session_log_serial_bringup.md).
 
 ## The model
 
