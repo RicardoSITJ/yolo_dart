@@ -43,22 +43,32 @@ yolo_dart/
 
 ## Quick start (on the DART)
 
+Everything the runtime needs — OpenCV 4.6 (Qt5 GUI), `tflite_runtime` 2.16.2 and
+`libvx_delegate.so` — already ships in the Variscite BSP, so there is nothing to
+`pip install`. See [`docs/hardware.md`](docs/hardware.md) for the verified board state.
+
 ```bash
-# 1. Clone on the board
+# 1. Clone on the board (it has internet over eth1)
 git clone https://github.com/RicardoSITJ/yolo_dart.git
 cd yolo_dart
 
-# 2. Install runtime deps (tflite-runtime is usually already in the BSP)
-pip3 install -r requirements.txt
+# 2. Verify the environment (checks NPU delegate, camera, model)
+./scripts/setup_board.sh
 
-# 3. Run detection on the NPU
-python3 src/detect.py \
+# 3. Real-time detection on the NPU, shown on the LVDS/Weston display.
+#    XDG_RUNTIME_DIR lets the GUI window reach Weston when launched over serial/ssh.
+export XDG_RUNTIME_DIR=/run/user/0
+python3 src/realtime_detect.py \
     --model models/yolov8n_int8.tflite \
-    --source test.jpg \
+    --labels models/coco_labels.txt \
+    --camera 3 \
     --delegate /usr/lib/libvx_delegate.so
+
+# CPU vs NPU A/B: drop --delegate to run the same model on the A53 cores.
+# Headless (no display, writes outputs/latest.jpg): add --headless
 ```
 
-If `libvx_delegate.so` is missing, it is provided by the `tensorflow-lite-vx-delegate` package in the NXP/Variscite BSP.
+Single-image sanity check instead of live video: `src/detect.py` (same NPU path).
 
 ## Exporting a model (on a host PC)
 
