@@ -4,11 +4,10 @@ Bench setup for running YOLO object detection on the NPU of the **DART-MX8M-PLUS
 (NXP i.MX 8M Plus). The DART is the compute target; the Mac is used only as a serial
 console / development host.
 
-> **Verification note.** Everything under "Host (Mac)" was read directly from the
-> machine (`system_profiler`, `sw_vers`, `ifconfig`) on 2026-11-19. The DART-side
-> peripherals are listed as reported by the user — they are **not** on the Mac's USB
-> bus (confirmed: the only USB device on the Mac is the FTDI serial adapter), so they
-> can only be verified from the board's own console once serial access works.
+> **Verification.** Host facts were read from the Mac (`system_profiler`, `ifconfig`).
+> Target facts were read **directly from the board** over the serial console on
+> 2026-11-19 (`uname`, `lsusb`, `v4l2-ctl`, `ip`, `dpkg`). Everything below marked ✅
+> was observed first-hand.
 
 ## Topology
 
@@ -16,82 +15,101 @@ console / development host.
                  USB (serial console, FTDI FT230X)
    ┌──────────┐  /dev/cu.usbserial-DK0JTWFN @115200   ┌────────────────────────┐
    │  MacBook │ ◄───────────────────────────────────► │  DART-MX8M-PLUS (SoM)  │
-   │  Pro M3  │                                        │  NXP i.MX 8M Plus      │
+   │  Pro M3  │        ttymxc0, root (no password)     │  NXP i.MX 8M Plus      │
    └──────────┘                                        │  + VIP8000 NPU         │
                                                        └──────────┬─────────────┘
-                                                                  │ on the DART / carrier:
+                                                                  │ on the DART:
                                                      ┌────────────┼───────────────┐
-                                                     │            │               │
-                                                USB keyboard   USB camera      Ethernet
-                                                             (Logitech 1080p)   (RJ45)
+                                                  USB C920      eth1            (eth0 down)
+                                                /dev/video3   192.168.0.169/24
 ```
 
-The Mac does **not** see the keyboard, camera, or ethernet — those hang off the DART's
-carrier board. The only physical link between Mac and DART is the USB-serial console.
+The only physical link between Mac and DART is the USB-serial console. The keyboard,
+camera, and ethernet hang off the DART, not the Mac (confirmed: the Mac's only USB
+device is the FTDI adapter).
 
 ## Host (Mac) — verified ✅
 
-| Spec              | Value                                            |
-|-------------------|--------------------------------------------------|
-| Model             | MacBook Pro (`Mac15,3`)                           |
-| Chip              | Apple **M3**                                      |
-| CPU cores         | 8 (4 performance + 4 efficiency)                  |
-| Memory            | 16 GB unified                                     |
-| macOS             | 14.2 (build 23C64)                               |
-| Active network    | `en0` (Wi-Fi), IP `192.168.10.87/23`             |
-| Role              | Serial console + dev host (model export)          |
+| Spec           | Value                                       |
+|----------------|---------------------------------------------|
+| Model          | MacBook Pro (`Mac15,3`)                      |
+| Chip           | Apple **M3**, 8 cores (4P + 4E)             |
+| Memory         | 16 GB unified                               |
+| macOS          | 14.2 (build 23C64)                         |
+| Active network | `en0` (Wi-Fi), `192.168.10.87/23`           |
+| USB device     | FTDI **FT230X** (VID `0403`/PID `6015`, SN `DK0JTWFN`) → `/dev/cu.usbserial-DK0JTWFN` |
+| Role           | Serial console + model-export host          |
 
-USB devices actually enumerated on the Mac:
+## Target (DART-MX8M-PLUS) — verified ✅
 
-| Device             | Detail                                                  |
-|--------------------|---------------------------------------------------------|
-| FTDI **FT230X Basic UART** | VID `0x0403` / PID `0x6015`, serial `DK0JTWFN`, up to 12 Mb/s → `/dev/cu.usbserial-DK0JTWFN` |
+| Component       | Value                                                            |
+|-----------------|------------------------------------------------------------------|
+| SoM / SoC       | Variscite DART-MX8M-PLUS, NXP i.MX 8M Plus                        |
+| Hostname        | `imx8mp-var-dart`                                                 |
+| OS              | **Debian 12 (bookworm)** — *not Yocto*                            |
+| Kernel          | `6.6.119-fslc-imx` (NXP FSLC), aarch64                           |
+| CPU             | 4× Cortex-A53                                                     |
+| RAM             | 3.5 GB (≈3.2 GB free at idle)                                    |
+| NPU             | Verisilicon VIP8000 (~2.3 TOPS, INT8), driver `/dev/galcore` ✅  |
+| Console         | `ttymxc0`, login **root**, **no password**                       |
 
-> Built-in **FaceTime HD Camera** exists on the Mac but is unrelated to the DART
-> inference pipeline. Two USB-Ethernet adapters (`en3`, `en4`) are present but
-> currently **inactive**.
+### Camera — verified ✅
+| Field      | Value                                              |
+|------------|----------------------------------------------------|
+| Model      | **Logitech HD Pro Webcam C920** (UVC 1.00)         |
+| USB ID     | `046d:0892`                                        |
+| V4L2 node  | `/dev/video3` (capture) — driver `uvcvideo`        |
+| Formats    | YUYV (raw) + MJPG (for 1080p); exposes up to 1080p |
 
-## Target (DART-MX8M-PLUS) — as reported ⚠️ (verify from board)
+> The three platform nodes `/dev/video0..2` are **hardware codecs** (VSI
+> encoder/decoder, ISI m2m), not the webcam. The C920 enumerated as `/dev/video3`.
 
-| Component         | Details                                                   | Status |
-|-------------------|-----------------------------------------------------------|--------|
-| SoM               | Variscite DART-MX8M-PLUS (NXP i.MX 8M Plus, 4× Cortex-A53) | reported |
-| NPU               | Verisilicon VIP8000, ~2.3 TOPS, INT8                       | by SoC spec |
-| USB keyboard      | Generic USB keyboard (local input on the board)           | reported |
-| USB camera        | Logitech HD 1080p webcam (UVC). Likely C920/C922 class     | reported |
-| Ethernet          | RJ45 cable to LAN (SSH / `git clone` from the board)       | reported |
-| Serial console    | FTDI FT230X → Mac, 115200 8N1                              | partial* |
+### Networking — verified ✅
+| Interface | State | Address                        |
+|-----------|-------|--------------------------------|
+| `eth1`    | UP    | `192.168.0.169/24` (DHCP)      |
+| `eth0`    | down  | —                              |
 
-\* The serial link enumerates on the Mac, but a clean console read is still pending
-(see `docs/npu_setup.md` / serial troubleshooting). Readable boot output is needed to
-confirm the OS, NPU driver (`galcore`), and the attached peripherals from the board side.
+> ⚠️ The DART is on `192.168.0.0/24` but the Mac is on `192.168.10.x` — **different
+> subnets**, so direct SSH Mac→DART won't route without putting them on the same LAN.
+> That's why we drive the board over the **serial console** instead.
+
+## Software / ML stack — verified ✅
+
+| Item                     | Value                                   | NPU-ready? |
+|--------------------------|-----------------------------------------|------------|
+| `/dev/galcore`           | present (NPU kernel driver)             | ✅ |
+| `/usr/lib/libvx_delegate.so` | present (856 KB) — TFLite NPU delegate | ✅ |
+| `libtensorflow-lite.so`  | 2.16.2                                  | ✅ |
+| Python `tflite_runtime`  | 2.16.2                                  | ✅ |
+| Python                   | 3.11.2 (`/usr/bin/python3`)             | ✅ |
+| TensorFlow (full)        | not installed (not needed on target)    | n/a |
+| Python `cv2` (OpenCV)    | to confirm / may need `pip install`      | ⚠️ |
+
+**Bottom line: the board is NPU-ready.** The delegate, TFLite runtime, Python binding,
+and NPU driver are all present — we only need to push an INT8 YOLO `.tflite` model and
+run `detect.py --delegate /usr/lib/libvx_delegate.so`.
 
 ## Does it make sense? — sanity check
 
-- ✅ **Camera on the DART, not the Mac.** Correct: YOLO must run on the i.MX 8M Plus
-  NPU, so the camera frames have to reach the board. A UVC Logitech 1080p webcam is a
-  standard, well-supported V4L2 source on the i.MX BSP.
-- ✅ **Keyboard on the DART.** Lets you log in locally without depending on the serial
-  console — reasonable for a dev bench.
-- ✅ **Ethernet on the DART.** Needed so the board can `git clone` this public repo and
-  SSH in — exactly what the repo README assumes.
-- ✅ **USB-serial to the Mac.** Standard way to get the boot/U-Boot console and debug
-  early boot before the network is up.
-- ⚠️ **Power not listed.** The DART carrier needs its own power supply (USB-serial does
-  not power the SoM). Worth adding to the inventory.
-- ⚠️ **USB bandwidth.** Keyboard + 1080p webcam share the i.MX 8M Plus USB. Fine for
-  MJPEG/compressed 1080p; raw YUY2 at high FPS can saturate a single USB 2.0 port.
+- ✅ **Camera on the DART** (C920 at `/dev/video3`) — correct, frames reach the SoC for NPU inference.
+- ✅ **NPU stack already installed** — `galcore` + `libvx_delegate.so` + `tflite_runtime 2.16.2`.
+- ✅ **USB-serial to the Mac** — our working control channel (root shell, no password).
+- ⚠️ **Different subnets** — SSH Mac→DART needs same LAN; for now use serial.
+- ⚠️ **OpenCV Python** not yet confirmed on the board; `detect.py` imports `cv2`.
+- ⚠️ **Power supply** not inventoried (USB-serial does not power the SoM).
 
-## To verify next (from the board)
+## Reproduce these checks (over serial, from the Mac)
 
-Once the serial console (or SSH over ethernet) is readable, confirm on the DART:
+A helper `~/dart.py` drives the console (auto-login as root) — pipe commands via stdin:
 
 ```bash
-uname -a                      # kernel / BSP
-cat /etc/os-release           # Yocto image
-v4l2-ctl --list-devices       # the Logitech webcam as /dev/videoN
-v4l2-ctl -d /dev/video0 --list-formats-ext   # supported resolutions/FPS
-ip addr                       # ethernet link + IP
-ls /dev/galcore               # NPU kernel driver present
-find / -name libvx_delegate.so 2>/dev/null   # NPU TFLite delegate
+python3 ~/dart.py <<'EOF'
+uname -a
+lsusb
+v4l2-ctl --list-devices
+ip -4 addr
+ls -l /usr/lib/libvx_delegate.so
+python3 -c "import tflite_runtime; print(tflite_runtime.__version__)"
+EOF
 ```
