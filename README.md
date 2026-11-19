@@ -59,22 +59,28 @@ Everything the runtime needs — OpenCV 4.6 (Qt5 GUI), `tflite_runtime` 2.16.2 a
 `libvx_delegate.so` — already ships in the Variscite BSP, so there is nothing to
 `pip install`. See [`docs/hardware.md`](docs/hardware.md) for the verified board state.
 
+**Two commands from a clean clone — `make streaming` downloads the model and starts
+live detection on the display:**
+
 ```bash
-# 1. Clone on the board (it has internet over eth1)
-git clone https://github.com/RicardoSITJ/yolo_dart.git
-cd yolo_dart
-
-# 2. Verify the environment (checks NPU delegate, camera, model)
-./scripts/setup_board.sh
-
-# 3. Real-time detection on the NPU, shown on the LVDS/Weston display.
-#    The window is routed to Weston automatically (the script finds the Wayland
-#    socket), so this works straight from a serial/ssh session.
-python3 src/realtime_detect.py --delegate /usr/lib/libvx_delegate.so
-
-# CPU vs NPU A/B: pass --delegate '' to run the same model on the A53 cores.
-# Headless (no display, writes outputs/latest.jpg): add --headless
+git clone https://github.com/RicardoSITJ/yolo_dart.git && cd yolo_dart
+make streaming
 ```
+
+Other targets: `make detect` (single image), `make benchmark`, `make cpu` (NPU vs
+CPU), `make setup` (verify env), `make test`. Override knobs inline, e.g.
+`make streaming CAMERA=0 CONF=0.5`.
+
+<details><summary>Equivalent without make</summary>
+
+```bash
+./scripts/setup_board.sh                 # verify env + download model
+python3 src/realtime_detect.py --delegate /usr/lib/libvx_delegate.so
+# CPU A/B: --delegate ''   |   headless (writes outputs/latest.jpg): --headless
+```
+The live window is routed to Weston automatically (the script finds the Wayland
+socket), so it works straight from a serial/ssh session.
+</details>
 
 Defaults: `--model models/yolov5n-det-int8.tflite`, `--labels models/coco_labels.txt`,
 `--camera 3`. If the window does not appear, set `QT_QPA_PLATFORM=xcb` to fall back to
