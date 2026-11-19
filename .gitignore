@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Models / weights (keep repo light; distribute separately or via releases)
+*.pt
+*.onnx
+*.tflite
+*.nb
+!models/.gitkeep
+
+# NPU warmup / compile cache
+*.nb.cache
+/tmp/*.nb
+
+# Data & outputs
+data/
+outputs/
+*.jpg
+*.jpeg
+*.png
+!docs/**/*.png
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/

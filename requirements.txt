@@ -1,0 +1,12 @@
+# --- Target (DART-MX8M-PLUS) runtime ---
+# tflite-runtime ships in the NXP/Variscite BSP; listed here for reference.
+# tflite-runtime
+numpy
+opencv-python-headless
+
+# --- Host (export / quantization) only ---
+# Install these on a dev PC, NOT on the board:
+# ultralytics>=8.0.0
+# tensorflow>=2.14
+# onnx
+# onnxruntime
