@@ -60,9 +60,10 @@ def _dequant(arr, detail):
 def decode_raw_dfl(interp, outs, conf_thres, iou_thres, input_wh,
                    nc=80, reg_max=16):
     iw, ih = input_wh
-    # group tensors by grid size, classifying each as the box (4*reg_max ch) or
-    # the class tensor by its channel count (not as a dict key, so it is robust
-    # even if nc happened to equal 4*reg_max).
+    # Group the two tensors of each scale into box (4*reg_max channels) vs class
+    # (nc channels) by channel count. This is unambiguous as long as nc != 4*reg_max
+    # (true for COCO: nc=80, 4*reg_max=64). A model with exactly nc==64 classes could
+    # not be disambiguated from shape alone and is not supported here.
     by_grid = {}
     for od in outs:
         a = _dequant(interp.get_tensor(od["index"]), od)[0]   # [H,W,C]
