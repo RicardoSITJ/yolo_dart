@@ -12,6 +12,8 @@ CAMERA   ?= 3
 CONF     ?= 0.35
 IOU      ?= 0.45
 MODEL_URL = https://huggingface.co/EdgeFirst/yolov5-det/resolve/main/tflite/yolov5n-det-int8-smart.tflite
+SAMPLE     = assets/sample.jpg
+SAMPLE_URL = https://ultralytics.com/images/bus.jpg
 PY        = python3
 
 .PHONY: help streaming run setup detect benchmark cpu test clean model
@@ -34,6 +36,11 @@ $(MODEL):
 	@wget -q --show-progress -O $(MODEL) "$(MODEL_URL)"
 model: $(MODEL)
 
+$(SAMPLE):
+	@mkdir -p assets
+	@echo ">> downloading sample image..."
+	@wget -q -O $(SAMPLE) "$(SAMPLE_URL)"
+
 # Flagship: start streaming with one command.
 streaming run: $(MODEL)
 	$(PY) src/realtime_detect.py --model $(MODEL) --labels $(LABELS) \
@@ -42,8 +49,8 @@ streaming run: $(MODEL)
 setup:
 	./scripts/setup_board.sh
 
-detect: $(MODEL)
-	$(PY) src/detect.py --model $(MODEL) --labels $(LABELS) \
+detect: $(MODEL) $(SAMPLE)
+	$(PY) src/detect.py --model $(MODEL) --labels $(LABELS) --source $(SAMPLE) \
 		--delegate $(DELEGATE) --conf $(CONF) --iou $(IOU)
 
 benchmark: $(MODEL)
