@@ -49,17 +49,23 @@ for d in /dev/video3 /dev/video0 /dev/video1 /dev/video2; do
 done
 [ -n "$CAM" ] && ok "webcam at $CAM" || warn "C920 not detected on /dev/video* (plug it in?)"
 
-echo "== 4/4  Model =="
-MODEL=models/yolov8n_int8.tflite
+echo "== 4/4  Model (EdgeFirst YOLOv5n INT8, built for the i.MX 8M Plus NPU) =="
+MODEL=models/yolov5n-det-int8.tflite
+MODEL_URL="https://huggingface.co/EdgeFirst/yolov5-det/resolve/main/tflite/yolov5n-det-int8-smart.tflite"
 if [ -f "$MODEL" ]; then
   ok "$MODEL ($(du -h "$MODEL" | cut -f1))"
 else
-  warn "model not found at $MODEL"
-  echo "        export it on a host PC:  ./scripts/export_tflite.sh yolov8n"
-  echo "        then copy it to the board under models/"
+  echo "  downloading pretrained INT8 model from Hugging Face (EdgeFirst)..."
+  if wget -q --show-progress -O "$MODEL" "$MODEL_URL"; then
+    ok "downloaded $MODEL ($(du -h "$MODEL" | cut -f1))"
+  else
+    rm -f "$MODEL"
+    die "model download failed — check the board's internet connection"
+  fi
 fi
 
 echo
 echo "Setup check complete. To run (shows window on the LVDS/Weston display):"
 echo "  export XDG_RUNTIME_DIR=/run/user/0"
 echo "  python3 src/realtime_detect.py --delegate /usr/lib/libvx_delegate.so"
+echo "Static sanity check instead:  python3 src/detect.py --source cat.jpg"
