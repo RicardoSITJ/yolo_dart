@@ -44,8 +44,9 @@ class TestHelpers(unittest.TestCase):
 
 class TestDecodeSingle(unittest.TestCase):
     def test_one_box(self):
-        # output [1, 84, N]; col layout after transpose is [N, 4+80]
-        N = 10
+        # output [1, 84, N]; decode transposes to [N, 4+80] (heuristic needs N > 84,
+        # which always holds for real exports where N=8400).
+        N = 8400
         o = np.zeros((1, 84, N), np.float32)
         o[0, :4, 0] = [320, 320, 100, 100]            # cx,cy,w,h (pixels)
         o[0, 4 + 7, 0] = 0.9                           # class 7 score (already activated)
@@ -59,7 +60,7 @@ class TestDecodeSingle(unittest.TestCase):
         self.assertTrue(abs(w - 100) <= 2 and abs(h - 100) <= 2)
 
     def test_empty(self):
-        o = np.zeros((1, 84, 5), np.float32)           # all scores 0 < conf
+        o = np.zeros((1, 84, 8400), np.float32)        # all scores 0 < conf
         rects, scores, cids = yd.decode_single(
             FakeInterp([o]), [_detail(0)], 0.35, 0.45, (640, 640))
         self.assertEqual(rects, [])
