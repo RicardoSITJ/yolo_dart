@@ -122,6 +122,35 @@ Next:
 - [ ] Benchmark NPU vs CPU and measure sustained live FPS
 - [ ] Tune confidence/NMS and camera resolution for best latency
 
+## Tests
+
+Pure decode-logic unit tests (no NPU/camera needed; need numpy + opencv):
+
+```bash
+python3 tests/test_yolo_decode.py      # letterbox + single/raw-DFL decoders + NMS
+```
+
+## Operating the board headless (serial console)
+
+The board was brought up with **no monitor/keyboard** via its USB-serial console. See
+[`docs/serial_console.md`](docs/serial_console.md); the helper
+[`tools/dart_console.py`](tools/dart_console.py) logs in as root and runs commands
+piped on stdin — how an agent (e.g. Claude Code) drives the board:
+
+```bash
+python3 tools/dart_console.py <<'EOF'
+ls /dev/video*
+python3 ~/yolo_dart/src/detect.py
+EOF
+```
+
+## The model
+
+The YOLO weights are **not committed** to this repo (the EdgeFirst YOLOv5n INT8 model
+is AGPL-3.0; this repo is Apache-2.0). `scripts/setup_board.sh` downloads it to
+`models/` at setup time, so a clone + setup is still fully reproducible. Details and
+how to swap models: [`docs/models.md`](docs/models.md).
+
 ## License
 
-[Apache-2.0](LICENSE)
+[Apache-2.0](LICENSE)  ·  model: AGPL-3.0 (downloaded separately, see above)
